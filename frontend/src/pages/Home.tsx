@@ -84,7 +84,7 @@ export default function Home({ authenticated }: HomeProps) {
 
       <div className="home-hero">
         <div className="home-hero-copy">
-          <span className="eyebrow">LLM + MoE 多专家决策融合</span>
+          <span className="eyebrow">LLM + MoT 多专家决策融合</span>
           <h1>金通科技</h1>
           <p>面向 A 股研究的多源数据分析与投资决策工作台。</p>
           <div className="hero-actions">
