@@ -1,5 +1,7 @@
 # 金通科技
 ### 基于 LLM + MoE 架构的多维度 AI 智能股票分析与量化决策系统
+
+> 一个可运行的真实数据 MVP：数据、模型、回退原因和证据覆盖情况都会显式展示，而不是把缺失数据包装成“实时结论”。
 <p align="center">
   <img src="windows1.jpg" width="600">
 </p>
@@ -88,6 +90,46 @@ npm run dev
 
 项目核心解决“信息过载”与“决策主观”的问题，通过 Agentic Workflow 将碎片化数据转化为可执行的投资交易方案。
 
+## 我完成的工程工作
+
+这个版本不只是页面原型，而是对原团队项目进行了真实数据化、稳定性和可观测性改造：
+
+- 将运行默认切换为 `DATA_MODE=real`，并建立 Demo 数据隔离开关；真实模式不会自动播种演示账号、行情或分析快照。
+- 打通 AkShare 行情、K 线、新闻、行业、东方财富 F10/财务数据的同步与来源记录，页面显示 `source`、抓取时间和同步状态。
+- 重构分析结果状态协议，增加 `data_source_status` 和 `ai_analysis_status`，区分 LLM 成功、规则回退、完全失败和限流原因。
+- 修复重复分析导致的快照唯一约束冲突，使同一股票连续分析可以安全更新已有快照。
+- 修复无画像注册时金额字段为 `None` 导致 HTTP 500 的边界问题。
+- 将专家分析改为单密钥顺序调用并保留节流/重试，避免 5 个并发请求主动触发智谱 `429/1305` 限流；同时切换到更稳定的 `glm-4-flash` 默认配置。
+- 在前端加入规则回退横幅、来源/更新时间面板、证据缺失提示和专家回退原因，避免把规则文本误认为 LLM 结论。
+- 修复宏观报告缺失指数时显示 Python `None` 的问题，增加报告日期、覆盖量和缺失字段元数据。
+- 为情绪分析增加明确标记的词典回退：未安装 Transformers/PyTorch 时仍可生成可解释结果，但不会冒充模型推理。
+- 为每日同步和排名任务增加超时边界，避免页面无限停留在“生成中”。
+- 增加注册、鉴权、双重分析、限流回退、无 Demo 数据、财务同步和量化因子等回归脚本。
+
+## 已验证的关键结果
+
+在真实模式 `jintong-real` 环境中已验证：
+
+- 000001（平安银行）连续分析两次均成功完成，第二次不再触发快照 `UniqueViolation`。
+- 智谱模型切换和顺序请求后，最新真实分析的五位专家均可走 LLM；发生供应商限流时响应会明确标记回退，而不是静默伪装。
+- 注册请求不带画像仍返回成功。
+- 真实数据库不存在 `demo@jintong.example.com` 或 `demo_seed` 数据。
+- 前端 TypeScript/Vite 构建通过，Docker Compose 的前端、后端和 PostgreSQL 健康检查通过。
+
+## 测试与验收命令
+
+```bash
+# 前端静态构建
+cd frontend && npm ci && npm run build
+
+# 后端容器内运行回归脚本
+docker compose -p jintong-real exec -T backend python scripts/smoke_auth.py
+docker compose -p jintong-real exec -T backend python scripts/test_register_without_profile.py
+docker compose -p jintong-real exec -T backend python scripts/test_double_analysis_000001.py
+docker compose -p jintong-real exec -T backend python scripts/test_llm_rate_limit_fallback.py
+docker compose -p jintong-real exec -T backend python scripts/test_no_demo_data_in_real_mode.py
+```
+
 ## 核心架构
 系统采用“决策融合层（LLM + MoT）”架构，实现专家级协同分析：
 
@@ -111,7 +153,7 @@ npm run dev
 
 ## 核心功能模块
 **1. 智能盘后复盘 & 排行榜**
-自动化流水线：每日 16:00 自动触发。结合当日交易数据、即时新闻进行全量扫描。
+自动化流水线：支持手动触发和后台任务轮询；部署环境可通过外部定时器触发同步。结合当日交易数据、即时新闻进行扫描。
 
 多维评分体系：根据专家打分生成“金通推荐榜”，支持透明化查阅每项打分依据。
 
@@ -138,7 +180,7 @@ npm run dev
 独立宏观大盘：一键生成“今日宏观分析报告”，涵盖 GDP/CPI 趋势、美联储政策影响及 A 股风格轮动建议。
 
 ## 技术实现细节
-后端引擎：Python 异步调用，多 API-Key 并发实例（支持 6+ Zhipu 账号负载均衡）。
+后端引擎：Python + FastAPI，后台任务负责数据同步与分析；同一智谱 Key 使用顺序调用、节流和重试，降低供应商限流风险。
 
 数据采集：AkShare 接入。
 
@@ -148,7 +190,7 @@ LLM: ChatGLM 系列 (Zhipu AI)
 
 NLP: Fearao/RoBERTa_based_on_eastmoney_guba_comments & finbert-tone-chinese
 
-前端方案：支持 Web/App 交互，基于数据驱动的实时渲染。
+前端方案：React + TypeScript，基于数据驱动的状态渲染，支持真实模式和显式标记的 UI 演示模式。
 
 
 **免责声明**
