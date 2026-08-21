@@ -1,0 +1,6 @@
+# Optional UI/data demo override. Never use this file for a real deployment.
+services:
+  backend:
+    environment:
+      DATA_MODE: demo
+      SEED_DEMO_DATA: "true"
